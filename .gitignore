@@ -1,0 +1,4 @@
+.ruff_cache/
+.tox/
+*.egg-info/
+trivy-plugin-epss-*.tar.gz

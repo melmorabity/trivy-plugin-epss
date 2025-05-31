@@ -1,0 +1,71 @@
+[project]
+authors = [
+    { name = "Mohamed El Morabity", email = "melmorabity@fedoraproject.org" },
+]
+classifiers = ["Programming Language :: Python :: 3"]
+license = { text = "GPL-3.0-or-later" }
+name = "trivy-plugin-epss"
+requires-python = ">=3.9"
+version = "1.0.0"
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools"]
+
+[project.optional-dependencies]
+dev = ["mypy", "pre-commit", "ruff"]
+test = ["pytest", "pytest-cov", "tox"]
+
+[tool.mypy]
+exclude = ["build"]
+python_version = "3.9"
+strict = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+[tool.pydocstyle]
+convention = "google"
+match_dir = "^(?!build$|\\.).*$"
+
+[tool.ruff]
+line-length = 79
+target-version = "py39"
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+ignore = ["COM812", "EM", "LOG015", "TRY003", "TRY400"]
+select = ["ALL"]
+
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+
+[tool.ruff.lint.isort]
+order-by-type = false
+split-on-trailing-comma = false
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+min_version = 4.0
+envlist = py39,py310,py311,py312,py313
+skip_missing_interpreters = True
+
+[testenv]
+deps = -e .[test]
+commands = pytest
+
+[testenv:lint]
+deps = -e .[dev]
+commands =
+  pre-commit run -a
+"""
