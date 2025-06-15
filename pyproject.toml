@@ -1,0 +1,90 @@
+[project]
+authors = [
+    { name = "Mohamed El Morabity", email = "melmorabity@fedoraproject.org" },
+]
+classifiers = [
+    "Environment :: Console",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+]
+description = "A Trivy plugin that enhances vulnerability scan results with EPSS data"
+keywords = ["epss", "plugin", "trivy", "trivy-scan"]
+license = { text = "GPL-3.0-or-later" }
+name = "trivy-plugin-epss"
+readme = "README.md"
+requires-python = ">=3.10"
+version = "1.0.0"
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools"]
+
+[project.optional-dependencies]
+dev = [
+    "mypy",
+    "pre-commit",
+    "ruff",
+    "trivy-plugin-epss[test]",
+    "typing_extensions",
+]
+test = ["pyfakefs", "pytest", "pytest-cov", "pytest-mock", "tox"]
+
+[tool.mypy]
+exclude = ["build"]
+python_version = "3.10"
+strict = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+addopts = [
+    "--cov-fail-under=100",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov=epss",
+]
+
+[tool.ruff]
+line-length = 79
+target-version = "py310"
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+ignore = ["COM812", "EM", "FBT", "LOG015", "TRY003", "TRY400"]
+select = ["ALL"]
+
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+
+[tool.ruff.lint.isort]
+order-by-type = false
+split-on-trailing-comma = false
+
+[tool.ruff.lint.per-file-ignores]
+"tests.py" = ["D", "PLR0913", "S101"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+min_version = 4.0
+envlist = py310,py311,py312,py313
+skip_missing_interpreters = True
+
+[testenv]
+deps = -e .[test]
+commands = pytest tests.py
+
+[testenv:lint]
+deps = -e .[dev]
+commands =
+  pre-commit run -a
+"""
