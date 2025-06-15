@@ -1,0 +1,8 @@
+__pycache__
+.*_cache
+.coverage
+.tox
+.venv
+*.egg-info
+coverage.xml
+trivy-plugin-epss-*.tar.gz

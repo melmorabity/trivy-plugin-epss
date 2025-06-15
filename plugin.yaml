@@ -1,0 +1,11 @@
+---
+name: epss
+version: 1.0.0
+repository: github.com/melmorabity/trivy-plugin-epss
+maintainer: melmorabity
+output: true
+summary: Add EPSS data to vulnerability scan results
+description: A Trivy plugin that enhances vulnerability scan results with EPSS data.
+platforms:
+  - uri: epss.py
+    bin: epss.py
