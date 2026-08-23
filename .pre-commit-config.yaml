@@ -34,6 +34,7 @@ repos:
     rev: v0.9.3
     hooks:
       - id: taplo-lint
+        args: []
       - id: taplo-format
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.3
