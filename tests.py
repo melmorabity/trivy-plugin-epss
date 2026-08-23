@@ -330,6 +330,14 @@ def test_load_epss_data_file_missing(epss_csv_file: Path) -> None:
         epss.load_epss_data(epss_csv_file)
 
 
+def test_load_epss_data_invalid_encoding(epss_csv_file: Path) -> None:
+    epss_csv_file.parent.mkdir(parents=True, exist_ok=True)
+    epss_csv_file.write_bytes(b"\xff\xfe\xfd\xfc")
+
+    with pytest.raises(TrivyPluginEPSSError, match="Malformed EPSS data"):
+        epss.load_epss_data(epss_csv_file)
+
+
 def test_dump_updated_results_to_stdout(
     capsys: pytest.CaptureFixture[str],
     epss_data: dict[str, Any],
