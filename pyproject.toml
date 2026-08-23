@@ -29,7 +29,7 @@ dev = [
     "trivy-plugin-epss[test]",
     "typing_extensions",
 ]
-test = ["pyfakefs", "pytest", "pytest-cov", "pytest-mock", "tox"]
+test = ["pyfakefs", "pytest", "pytest-cov", "pytest-mock", "tox", "tox-uv"]
 
 [tool.mypy]
 exclude = ["build"]
@@ -76,10 +76,16 @@ convention = "google"
 legacy_tox_ini = """
 [tox]
 min_version = 4.0
+requires =
+    tox-uv
 envlist = py310,py311,py312,py313,py314
-skip_missing_interpreters = True
+skip_missing_interpreters = False
 
 [testenv]
+runner = uv-venv-runner
+uv_python_preference = only-managed
+set_env =
+    UV_PYTHON_DOWNLOADS = automatic
 deps = -e .[test]
 commands = pytest tests.py
 

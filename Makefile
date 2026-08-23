@@ -9,10 +9,10 @@ TARBALL = trivy-plugin-$(PLUGIN_NAME)-$(PLUGIN_VERSION).tar.gz
 all: lint test
 
 $(VIRTUAL_ENV)/bin/python:
-	python3 -m venv --prompt $(VIRTUAL_ENV) $(VIRTUAL_ENV)
+	uv venv --seed $(VIRTUAL_ENV)
 
 $(VIRTUAL_ENV_STAMP): pyproject.toml $(VIRTUAL_ENV)/bin/python
-	pip install -e .[dev] -e .[test]
+	uv pip install -e .[dev] -e .[test]
 	touch $@
 
 virtualenv: $(VIRTUAL_ENV_STAMP)

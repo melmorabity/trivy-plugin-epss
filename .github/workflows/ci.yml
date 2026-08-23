@@ -37,13 +37,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           python-version: '3.14'
-          cache: pip
-      - name: Install dependencies
-        run: pip install tox
+          enable-cache: true
+          cache-python: true
+          cache-suffix: lint
       - name: Cache pre-commit
         uses: actions/cache@v6
         with:
@@ -51,43 +51,27 @@ jobs:
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: pre-commit-
       - name: Run linting
-        run: tox -e lint
+        run: uvx --with tox-uv tox -e lint
 
   tests:
-    name: Unit tests (Python ${{ matrix.python_version }})
+    name: Unit tests
     needs:
       - determine_unit_tests_trigger
       - lint
     if: needs.determine_unit_tests_trigger.outputs.python_changed == 'true' || needs.determine_unit_tests_trigger.outputs.ci_changed == 'true'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - python_version: '3.10'
-            tox_env: py310
-          - python_version: '3.11'
-            tox_env: py311
-          - python_version: '3.12'
-            tox_env: py312
-          - python_version: '3.13'
-            tox_env: py313
-          - python_version: '3.14'
-            tox_env: py314
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-      - name: Setup Python
-        uses: actions/setup-python@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.0.1
         with:
-          python-version: ${{ matrix.python_version }}
-          cache: pip
-      - name: Install tox
-        run: pip install tox
+          enable-cache: true
+          cache-python: true
+          cache-suffix: tests
       - name: Run unit tests
-        run: tox -e ${{ matrix.tox_env }}
+        run: uvx --with tox-uv tox
       - name: Upload coverage to Codecov
-        if: matrix.python_version == '3.13'
         uses: codecov/codecov-action@v7
         with:
           files: coverage.xml
