@@ -67,16 +67,18 @@ repos:
       - id: actionlint
   - repo: local
     hooks:
-      - id: mypy
-        name: Mypy
-        entry: mypy
+      - id: ty
+        name: ty
+        entry: ty check
         language: system
+        args:
+          - --error-on-warning
         types:
           - python
 
 ci:
   skip:
-    - mypy
+    - ty
     - taplo-lint
   autoupdate_commit_msg: 'chore(pre-commit): pre-commit autoupdate'
   autofix_commit_msg: 'fix(pre-commit): auto fixes from pre-commit.com hooks'
