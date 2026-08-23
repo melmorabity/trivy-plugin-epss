@@ -55,7 +55,9 @@ jobs:
 
   tests:
     name: Unit tests (Python ${{ matrix.python_version }})
-    needs: determine_unit_tests_trigger
+    needs:
+      - determine_unit_tests_trigger
+      - lint
     if: needs.determine_unit_tests_trigger.outputs.python_changed == 'true' || needs.determine_unit_tests_trigger.outputs.ci_changed == 'true'
     runs-on: ubuntu-latest
     strategy:
