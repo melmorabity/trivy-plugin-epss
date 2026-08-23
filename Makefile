@@ -37,12 +37,15 @@ uninstall:
 pre-commit-autoupdate: virtualenv
 	pre-commit autoupdate
 
+release: virtualenv
+	semantic-release version --no-changelog --no-push
+
 clean:
 	$(RM) $(TARBALL)
 
 mrproper: clean
 	$(RM) -r $(VIRTUAL_ENV) .*_cache .tox *.egg-info
 
-.PHONY: all clean install lint mrproper pre-commit-update tarball test uninstall virtualenv
+.PHONY: all clean install lint mrproper pre-commit-update release tarball test uninstall virtualenv
 
 .DEFAULT_GOAL: all
