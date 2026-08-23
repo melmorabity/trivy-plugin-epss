@@ -194,7 +194,7 @@ def load_epss_data(csv_file: Path) -> dict[str, dict[str, Any]]:
         raise TrivyPluginEPSSError(
             f"Unable to read EPSS data from {csv_file}: {ex}"
         ) from None
-    except UnicodeError as ex:  # pragma: nocover
+    except UnicodeError as ex:
         raise TrivyPluginEPSSError(f"Malformed EPSS data: {ex}") from None
 
     return data
