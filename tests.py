@@ -197,7 +197,7 @@ def test_create_epss_data(
     network_mock.assert_called()
     assert epss_csv_file.parent.is_dir()
     assert epss_csv_file.is_file()
-    with epss_csv_file.open("r") as reader:
+    with epss_csv_file.open("r", encoding="utf-8") as reader:
         assert reader.read() == epss_csv
 
 
@@ -211,14 +211,12 @@ def test_update_epss_data(epss_csv: str, urlopen: UrlopenFixture) -> None:
     os.utime(target_file, (target_file_mtime, target_file_mtime))
     assert target_file.parent.is_dir()
     assert target_file.is_file()
-    with target_file.open("r") as reader:
-        assert reader.read() != epss_csv
+    assert target_file.read_text(encoding="utf-8") != epss_csv
 
     epss.update_epss_data("https://epss", target_file)
 
     network_mock.assert_called()
-    with target_file.open("r") as reader:
-        assert reader.read() == epss_csv
+    assert target_file.read_text(encoding="utf-8") == epss_csv
 
 
 def test_update_epss_data_network_error(urlopen: UrlopenFixture) -> None:
@@ -365,8 +363,10 @@ def test_dump_updated_results_to_file(
     epss.dump_updated_results(epss_data, output_file)
 
     assert not capsys.readouterr().out
-    with output_file.open("r") as reader:
-        assert json.loads(reader.read()) == updated_trivy_json_result
+    assert (
+        json.loads(output_file.read_text(encoding="utf-8"))
+        == updated_trivy_json_result
+    )
 
 
 def test_dump_updated_results_invalid_input(

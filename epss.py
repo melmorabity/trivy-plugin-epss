@@ -64,7 +64,8 @@ class ISO8601Formatter(Formatter):
             str: The formatted timestamp in ISO 8601 format.
         """
         return (
-            datetime.fromtimestamp(record.created)
+            datetime
+            .fromtimestamp(record.created)
             .astimezone()
             .isoformat(timespec="seconds")
         )
@@ -121,7 +122,7 @@ def update_epss_data(epss_data_url: str, target_file: Path) -> None:
     target_file.parent.mkdir(exist_ok=True, parents=True)
     try:
         with (
-            urllib.request.urlopen(epss_data_url) as response,  # noqa: S310
+            urllib.request.urlopen(epss_data_url) as response,  # ruff: ignore[suspicious-url-open-usage]
             GzipFile(fileobj=response) as gzip_file,
             target_file.open("wb") as writer,
         ):
