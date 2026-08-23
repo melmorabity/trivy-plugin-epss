@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import base64
 import gzip
 import json
 import logging
@@ -174,6 +175,48 @@ def updated_trivy_json_result() -> dict[str, Any]:
             }
         ]
     }
+
+
+@pytest.mark.parametrize(
+    ("epss_data_url", "expected_url", "expected_credentials"),
+    [
+        ("https://epss", "https://epss", None),
+        ("https://user:pwd@epss", "https://epss", "user:pwd"),
+        ("https://user@epss", "https://epss", "user:"),
+        (
+            "https://user%40name:p%40ss%3Aword@epss",
+            "https://epss",
+            "user@name:p@ss:word",
+        ),
+        (
+            "https://user:pwd@epss:8443/path",
+            "https://epss:8443/path",
+            "user:pwd",
+        ),
+    ],
+)
+def test_update_epss_data_with_credentials(
+    epss_data_url: str,
+    expected_url: str,
+    expected_credentials: str | None,
+    epss_csv: str,
+    urlopen: UrlopenFixture,
+) -> None:
+    network_mock = urlopen(epss_csv)
+
+    target_file = Path("/path/to/target.csv")
+    epss.update_epss_data(epss_data_url, target_file)
+
+    network_mock.assert_called_once()
+    request = network_mock.call_args.args[0]
+    assert request.full_url == expected_url
+    if expected_credentials is None:
+        assert "Authorization" not in request.headers
+    else:
+        credentials = base64.b64encode(expected_credentials.encode()).decode(
+            "ascii"
+        )
+        assert request.headers["Authorization"] == f"Basic {credentials}"
 
 
 def test_no_update_epss_data(

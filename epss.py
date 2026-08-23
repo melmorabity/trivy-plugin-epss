@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import base64
 import csv
 import errno
 import json
@@ -15,6 +16,7 @@ import re
 import sys
 import time
 import typing
+import urllib.parse
 import urllib.request
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from datetime import datetime
@@ -24,6 +26,7 @@ from logging import Formatter, StreamHandler
 from pathlib import Path
 from typing import Any, ClassVar
 from urllib.error import URLError
+from urllib.request import Request
 
 try:  # pragma: nocover
     from typing_extensions import override
@@ -97,6 +100,31 @@ class TrivyPluginEPSSError(Exception):
     """Base class for exceptions raised by the Trivy EPSS plugin."""
 
 
+def _build_epss_data_request(epss_data_url: str) -> Request:
+    # urllib.request doesn't strip user credentials embedded in a URL (as in
+    # https://user:pwd@server/...) before resolving the host, which makes
+    # the connection fail. Extract them, if any, and turn them into an
+    # Authorization header instead.
+    url = urllib.parse.urlsplit(epss_data_url)
+    if url.username is None:
+        return Request(epss_data_url)  # ruff: ignore[suspicious-url-open-usage]
+
+    # Credentials may be percent-encoded to include reserved characters
+    # (e.g. ":" or "@"), so they must be unquoted before use.
+    username = urllib.parse.unquote(url.username)
+    password = urllib.parse.unquote(url.password) if url.password else ""
+    authorization = base64.b64encode(f"{username}:{password}".encode()).decode(
+        "ascii"
+    )
+
+    netloc = url.netloc.rpartition("@")[2]
+
+    return Request(  # ruff: ignore[suspicious-url-open-usage]
+        urllib.parse.urlunsplit(url._replace(netloc=netloc)),
+        headers={"Authorization": f"Basic {authorization}"},
+    )
+
+
 def update_epss_data(epss_data_url: str, target_file: Path) -> None:
     """Download and update EPSS data if the cache is missing or outdated.
 
@@ -105,7 +133,8 @@ def update_epss_data(epss_data_url: str, target_file: Path) -> None:
     decompresses it, and writes it to the target file.
 
     Args:
-        epss_data_url (str): URL to download the (gzipped) EPSS data file.
+        epss_data_url (str): URL to download the (gzipped) EPSS data file,
+            possibly with embedded user credentials (`https://user:pwd@server/...`).
         target_file (Path): Path where the EPSS data should be saved.
 
     Raises:
@@ -121,8 +150,9 @@ def update_epss_data(epss_data_url: str, target_file: Path) -> None:
 
     target_file.parent.mkdir(exist_ok=True, parents=True)
     try:
+        request = _build_epss_data_request(epss_data_url)
         with (
-            urllib.request.urlopen(epss_data_url) as response,  # ruff: ignore[suspicious-url-open-usage]
+            urllib.request.urlopen(request) as response,  # ruff: ignore[suspicious-url-open-usage]
             GzipFile(fileobj=response) as gzip_file,
             target_file.open("wb") as writer,
         ):
