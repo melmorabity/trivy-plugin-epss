@@ -247,8 +247,10 @@ def dump_updated_results(
         except OSError as ex:  # pragma: nocover
             # Ignore broken pipe errors that may occur when the output is piped
             # and the downstream process closes early
-            if ex.errno == errno.EPIPE:
-                pass
+            if ex.errno != errno.EPIPE:
+                raise TrivyPluginEPSSError(
+                    f"Unable to write data to stdout: {ex}"
+                ) from None
 
 
 def _argument_parser() -> ArgumentParser:
