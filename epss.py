@@ -25,6 +25,11 @@ from pathlib import Path
 from typing import Any, ClassVar
 from urllib.error import URLError
 
+try:  # pragma: nocover
+    from typing_extensions import override
+except ImportError:  # pragma: nocover
+    from typing import override  # ty: ignore[unresolved-import]
+
 if typing.TYPE_CHECKING:  # pragma: nocover
     from logging import LogRecord
 
@@ -46,16 +51,14 @@ class ISO8601Formatter(Formatter):
         "FATAL": "\033[31m",
     }
 
-    @staticmethod
-    def formatTime(  # noqa: N802
-        record: LogRecord, _: str | None = None
-    ) -> str:
+    @override
+    def formatTime(self, record: LogRecord, datefmt: str | None = None) -> str:
         """Format the timestamp of a log record using ISO 8601.
 
         Args:
             record (LogRecord): The log record whose timestamp to format.
-            _ (str | None): Ignored. Present to match the signature of the base
-                method.
+            datefmt (str | None): Ignored. Present to match the signature of
+                the base method.
 
         Returns:
             str: The formatted timestamp in ISO 8601 format.
@@ -66,6 +69,7 @@ class ISO8601Formatter(Formatter):
             .isoformat(timespec="seconds")
         )
 
+    @override
     def format(self, record: LogRecord) -> str:
         """Format a log record, adding color to the log level name.
 
