@@ -40,7 +40,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.14'
           cache: pip
       - name: Install dependencies
         run: pip install tox
@@ -72,6 +72,8 @@ jobs:
             tox_env: py312
           - python_version: '3.13'
             tox_env: py313
+          - python_version: '3.14'
+            tox_env: py314
     steps:
       - name: Checkout
         uses: actions/checkout@v7

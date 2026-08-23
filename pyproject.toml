@@ -76,7 +76,7 @@ convention = "google"
 legacy_tox_ini = """
 [tox]
 min_version = 4.0
-envlist = py310,py311,py312,py313
+envlist = py310,py311,py312,py313,py314
 skip_missing_interpreters = True
 
 [testenv]
