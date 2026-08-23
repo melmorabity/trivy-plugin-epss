@@ -162,40 +162,44 @@ def load_epss_data(csv_file: Path) -> dict[str, dict[str, Any]]:
     score_date = None
 
     try:
-        with csv_file.open("r", encoding="utf-8") as csv_reader:
-            # Read metadata from the first line if present
-            if match := re.match(
-                r"\s*#\s*model_version\s*:\s*(.+?)\s*,"
-                r"score_date\s*:\s*(.+?)\s*$",
-                csv_reader.readline(),
-            ):
-                model_version, score_date = match.groups()
-            else:
-                csv_reader.seek(0)
-
-            csv_lines = csv.reader(
-                row
-                for row in csv_reader
-                if re.match(
-                    r"\s*CVE-\d{4}-\d{4,}\s*,\s*\d+(\.\d+)?([eE][+-]?\d+)?\s*,"
-                    r"\s*\d+(\.\d+)?([eE][+-]?\d+)?\s*$",
-                    row,
-                )
-            )
-            for fields in csv_lines:
-                cve, score, percentile = fields
-                data[cve] = {
-                    "score": float(score),
-                    "percentile": float(percentile),
-                    "model_version": model_version,
-                    "score_date": score_date,
-                }
+        content = csv_file.read_text(encoding="utf-8")
     except OSError as ex:
         raise TrivyPluginEPSSError(
             f"Unable to read EPSS data from {csv_file}: {ex}"
         ) from None
     except UnicodeError as ex:
         raise TrivyPluginEPSSError(f"Malformed EPSS data: {ex}") from None
+
+    lines = content.splitlines()
+
+    # Read metadata from the first line if present
+    if lines and (
+        match := re.match(
+            r"\s*#\s*model_version\s*:\s*(.+?)\s*,"
+            r"score_date\s*:\s*(.+?)\s*$",
+            lines[0],
+        )
+    ):
+        model_version, score_date = match.groups()
+        lines = lines[1:]
+
+    csv_lines = csv.reader(
+        row
+        for row in lines
+        if re.match(
+            r"\s*CVE-\d{4}-\d{4,}\s*,\s*\d+(\.\d+)?([eE][+-]?\d+)?\s*,"
+            r"\s*\d+(\.\d+)?([eE][+-]?\d+)?\s*$",
+            row,
+        )
+    )
+    for fields in csv_lines:
+        cve, score, percentile = fields
+        data[cve] = {
+            "score": float(score),
+            "percentile": float(percentile),
+            "model_version": model_version,
+            "score_date": score_date,
+        }
 
     return data
 
