@@ -12,6 +12,25 @@ permissions:
   contents: read
 
 jobs:
+  determine_unit_tests_trigger:
+    name: Determine whether unit tests should run
+    runs-on: ubuntu-latest
+    outputs:
+      python_changed: ${{ steps.filter.outputs.python }}
+      ci_changed: ${{ steps.filter.outputs.ci }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Detect changed Python or CI files
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            python:
+              - '**/*.py'
+            ci:
+              - '.github/workflows/**'
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -36,6 +55,8 @@ jobs:
 
   tests:
     name: Unit tests (Python ${{ matrix.python_version }})
+    needs: determine_unit_tests_trigger
+    if: needs.determine_unit_tests_trigger.outputs.python_changed == 'true' || needs.determine_unit_tests_trigger.outputs.ci_changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
