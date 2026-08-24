@@ -43,7 +43,7 @@ It then reads Trivy's scan results in JSON format from standard input and, for e
 The plugin is written in Python and requires Python 3.10 or newer. To install it, run the following command:
 
 ```console
-trivy plugin install github.com/melmorabity/trivy-plugin-epss@v1.0.0
+trivy plugin install github.com/melmorabity/trivy-plugin-epss@v1.1.0
 ```
 
 ## Usage

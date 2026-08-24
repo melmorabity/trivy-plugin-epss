@@ -1,6 +1,6 @@
 ---
 name: epss
-version: 1.0.0
+version: 1.1.0
 repository: github.com/melmorabity/trivy-plugin-epss
 maintainer: melmorabity
 output: true
