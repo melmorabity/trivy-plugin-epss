@@ -14,7 +14,7 @@ keywords = ["epss", "plugin", "trivy", "trivy-scan"]
 license = { text = "GPL-3.0-or-later" }
 name = "trivy-plugin-epss"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 version = "1.1.0"
 
 [build-system]
@@ -70,7 +70,7 @@ legacy_tox_ini = """
 min_version = 4.0
 requires =
     tox-uv
-envlist = py310,py311,py312,py313,py314
+envlist = py311,py312,py313,py314,py315
 skip_missing_interpreters = False
 
 [testenv]
