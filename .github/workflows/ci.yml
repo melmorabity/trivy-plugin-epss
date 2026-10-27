@@ -13,15 +13,16 @@ permissions:
 
 jobs:
   determine_unit_tests_trigger:
-    name: Determine whether unit tests should run
+    name: Determine which tests should run
     runs-on: ubuntu-latest
     outputs:
       python_changed: ${{ steps.filter.outputs.python }}
       ci_changed: ${{ steps.filter.outputs.ci }}
+      plugin_changed: ${{ steps.filter.outputs.plugin }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-      - name: Detect changed Python or CI files
+      - name: Detect changed Python, CI or plugin files
         id: filter
         uses: dorny/paths-filter@v4
         with:
@@ -30,6 +31,9 @@ jobs:
               - '**/*.py'
             ci:
               - '.github/workflows/**'
+            plugin:
+              - 'plugin.yaml'
+              - 'tests/**'
 
   lint:
     name: Lint
@@ -77,6 +81,42 @@ jobs:
           files: coverage.xml
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  e2e_tests:
+    name: End-to-end tests
+    needs:
+      - determine_unit_tests_trigger
+      - lint
+    if: |
+      needs.determine_unit_tests_trigger.outputs.python_changed == 'true' ||
+      needs.determine_unit_tests_trigger.outputs.ci_changed == 'true' ||
+      needs.determine_unit_tests_trigger.outputs.plugin_changed == 'true'
+    strategy:
+      matrix:
+        python-version:
+          - '3.11'
+          - '3.12'
+          - '3.13'
+          - '3.14'
+          - '3.15'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: true
+          enable-cache: false
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.3.1
+      - name: Install the plugin
+        run: trivy plugin install .
+      - name: Scan Log4Shell with EPSS data
+        run: |
+          trivy sbom --format json --output plugin=epss tests/log4shell.cdx.json \
+            | jq -e '.Results[].Vulnerabilities[] | select(.VulnerabilityID == "CVE-2021-44228") | .EPSS.score > 0'
 
   auto_merge:
     name: Auto-merge pre-commit.ci pull request
