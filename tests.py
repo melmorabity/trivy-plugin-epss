@@ -104,22 +104,29 @@ def epss_csv_file_with_content(
 
 class UrlopenFixture(Protocol):
     def __call__(
-        self, content: str | URLError, gzipped: bool = ...
+        self,
+        content: str | Exception,
+        gzipped: bool = ...,
+        truncated: bool = ...,
     ) -> Mock: ...
 
 
 @pytest.fixture
 def urlopen(mocker: MockerFixture) -> UrlopenFixture:
-    def _urlopen(content: str | URLError, gzipped: bool = True) -> Mock:
+    def _urlopen(
+        content: str | Exception, gzipped: bool = True, truncated: bool = False
+    ) -> Mock:
         if isinstance(content, Exception):
             return mocker.patch(
                 "epss.urllib.request.urlopen", side_effect=content
             )
 
+        data = content.encode("utf-8")
         if gzipped:
-            mock_response = BytesIO(gzip.compress(content.encode("utf-8")))
-        else:
-            mock_response = BytesIO(content.encode("utf-8"))
+            data = gzip.compress(data)
+        if truncated:
+            data = data[: len(data) // 2]
+        mock_response = BytesIO(data)
 
         return mocker.patch(
             "epss.urllib.request.urlopen", return_value=mock_response
@@ -259,8 +266,14 @@ def test_update_epss_data(epss_csv: str, urlopen: UrlopenFixture) -> None:
     assert target_file.read_text(encoding="utf-8") == epss_csv
 
 
-def test_update_epss_data_network_error(urlopen: UrlopenFixture) -> None:
-    network_mock = urlopen(URLError(reason="An error occurred"))
+@pytest.mark.parametrize(
+    "error",
+    [URLError(reason="An error occurred"), TimeoutError("An error occurred")],
+)
+def test_update_epss_data_network_error(
+    error: Exception, urlopen: UrlopenFixture
+) -> None:
+    network_mock = urlopen(error)
 
     target_file = Path("/path/to/target.csv")
     assert not target_file.parent.exists()
@@ -292,6 +305,25 @@ def test_update_epss_data_gzip_error(
     assert not target_file.exists()
 
 
+def test_update_epss_data_truncated_error(
+    epss_csv: str,
+    epss_csv_file_with_content: EpssCsvFileWithContentFixture,
+    urlopen: UrlopenFixture,
+) -> None:
+    network_mock = urlopen(epss_csv, truncated=True)
+
+    target_file = epss_csv_file_with_content("outdated")
+    target_file_mtime = time.time() - 25 * 60 * 60
+    os.utime(target_file, (target_file_mtime, target_file_mtime))
+
+    with pytest.raises(TrivyPluginEPSSError, match="EPSS data are truncated"):
+        epss.update_epss_data("https://epss", target_file)
+
+    network_mock.assert_called()
+    assert target_file.read_text(encoding="utf-8") == "outdated"
+    assert list(target_file.parent.iterdir()) == [target_file]
+
+
 def test_update_epss_data_write_error(
     epss_csv: str, urlopen: UrlopenFixture, mocker: MockerFixture
 ) -> None:
@@ -300,14 +332,14 @@ def test_update_epss_data_write_error(
     assert not target_file.parent.exists()
     assert not target_file.exists()
 
-    mocker.patch("pathlib.Path.open", side_effect=OSError("Permission denied"))
+    mocker.patch("epss.mkstemp", side_effect=OSError("Permission denied"))
 
     with pytest.raises(
         TrivyPluginEPSSError, match="Unable to write EPSS data"
     ):
         epss.update_epss_data("https://epss", target_file)
 
-    network_mock.assert_called()
+    network_mock.assert_not_called()
     assert target_file.parent.is_dir()
     assert not target_file.exists()
 
