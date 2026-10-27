@@ -242,6 +242,9 @@ def test_create_epss_data(
     epss.update_epss_data("https://epss", epss_csv_file)
 
     network_mock.assert_called()
+    assert network_mock.call_args.kwargs == {
+        "timeout": epss.DEFAULT_EPSS_DOWNLOAD_TIMEOUT
+    }
     assert epss_csv_file.parent.is_dir()
     assert epss_csv_file.is_file()
     with epss_csv_file.open("r", encoding="utf-8") as reader:
@@ -470,16 +473,10 @@ def test_dump_updated_results_to_file_error(
 
 
 @pytest.mark.parametrize(
-    ("output", "epss_url", "cache_dir"),
+    ("output", "epss_url", "cache_dir", "timeout"),
     [
-        (None, None, None),
-        ("/trivy/scans/result.json", None, None),
-        (None, "https://epss", None),
-        (None, None, "/trivy/cache"),
-        (None, "https://epss", "/trivy/cache"),
-        ("/trivy/scans/result.json", None, "/trivy/cache"),
-        ("/trivy/scans/result.json", "https://epss", None),
-        ("/trivy/scans/result.json", "https://epss", "/trivy/cache"),
+        (None, None, None, None),
+        ("/trivy/scans/result.json", "https://epss", "/trivy/cache", "5"),
     ],
 )
 def test_main_success(
@@ -489,6 +486,7 @@ def test_main_success(
     output: str,
     epss_url: str,
     cache_dir: str,
+    timeout: str,
 ) -> None:
     update_epss_data_mock = mocker.patch("epss.update_epss_data")
     load_epss_data_mock = mocker.patch(
@@ -505,6 +503,8 @@ def test_main_success(
         args += ["--epss-url", epss_url]
     if cache_dir:
         args += ["--cache-dir", cache_dir]
+    if timeout:
+        args += ["--timeout", timeout]
 
     status = epss.main(args)
 
@@ -513,12 +513,20 @@ def test_main_success(
         Path(cache_dir) if cache_dir else epss.DEFAULT_EPSS_CACHE_DIR
     ) / epss.EPSS_FILENAME
     update_epss_data_mock.assert_called_once_with(
-        epss_url or epss.DEFAULT_EPSS_DATA_URL, epss_data_file
+        epss_url or epss.DEFAULT_EPSS_DATA_URL,
+        epss_data_file,
+        float(timeout) if timeout else epss.DEFAULT_EPSS_DOWNLOAD_TIMEOUT,
     )
     load_epss_data_mock.assert_called_once_with(epss_data_file)
     dump_updated_results_mock.assert_called_once_with(
         epss_data, Path(output) if output else None
     )
+
+
+@pytest.mark.parametrize("timeout", ["0", "-1", "abc", "nan", "inf"])
+def test_main_invalid_timeout(timeout: str) -> None:
+    with pytest.raises(SystemExit):
+        epss.main(["--timeout", timeout])
 
 
 @pytest.mark.parametrize(

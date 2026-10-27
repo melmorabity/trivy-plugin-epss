@@ -52,7 +52,7 @@ trivy plugin install github.com/melmorabity/trivy-plugin-epss@v1.1.0
 
 ```console
 $ trivy epss --help
-usage: trivy epss [-h] [-o OUTPUT] [--epss-url EPSS_URL] [--cache-dir CACHE_DIR]
+usage: trivy epss [-h] [-o OUTPUT] [--epss-url EPSS_URL] [--cache-dir CACHE_DIR] [--timeout TIMEOUT]
 
 A Trivy plugin that enhances vulnerability scan results with EPSS data
 
@@ -63,6 +63,7 @@ options:
                         https://epss.empiricalsecurity.com/epss_scores-current.csv.gz)
   --cache-dir CACHE_DIR
                         EPSS data cache directory (default: ~/.cache/trivy/epss)
+  --timeout TIMEOUT     EPSS data download timeout, in seconds (default: 60)
 ```
 
 ### Examples
