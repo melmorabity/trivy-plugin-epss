@@ -20,7 +20,11 @@ import time
 import typing
 import urllib.parse
 import urllib.request
-from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+from argparse import (
+    ArgumentDefaultsHelpFormatter,
+    ArgumentParser,
+    ArgumentTypeError,
+)
 from datetime import datetime
 from gzip import BadGzipFile, GzipFile
 from http.client import HTTPException
@@ -46,6 +50,7 @@ DEFAULT_EPSS_DATA_URL = (
 )
 DEFAULT_EPSS_CACHE_DIR = Path.home() / ".cache" / "trivy" / "epss"
 EPSS_FILENAME = "epss.csv"
+DEFAULT_EPSS_DOWNLOAD_TIMEOUT = 60
 
 
 class ISO8601Formatter(Formatter):
@@ -129,7 +134,9 @@ def _build_epss_data_request(epss_data_url: str) -> Request:
     )
 
 
-def _download_epss_data(epss_data_url: str, target_file: Path) -> None:
+def _download_epss_data(
+    epss_data_url: str, target_file: Path, timeout: float
+) -> None:
     # Write to a temporary file moved into place once complete, so that a
     # failed or concurrent update never exposes partial EPSS data
     request = _build_epss_data_request(epss_data_url)
@@ -138,7 +145,7 @@ def _download_epss_data(epss_data_url: str, target_file: Path) -> None:
     try:
         with (
             os.fdopen(fd, "wb") as writer,
-            urllib.request.urlopen(request) as response,  # ruff: ignore[suspicious-url-open-usage]
+            urllib.request.urlopen(request, timeout=timeout) as response,  # ruff: ignore[suspicious-url-open-usage]
             GzipFile(fileobj=response) as gzip_file,
         ):
             shutil.copyfileobj(gzip_file, writer)
@@ -147,7 +154,11 @@ def _download_epss_data(epss_data_url: str, target_file: Path) -> None:
         temp_path.unlink(missing_ok=True)
 
 
-def update_epss_data(epss_data_url: str, target_file: Path) -> None:
+def update_epss_data(
+    epss_data_url: str,
+    target_file: Path,
+    timeout: float = DEFAULT_EPSS_DOWNLOAD_TIMEOUT,
+) -> None:
     """Download and update EPSS data if the cache is missing or outdated.
 
     Checks whether the target EPSS data file exists and is less than 24 hours
@@ -158,6 +169,7 @@ def update_epss_data(epss_data_url: str, target_file: Path) -> None:
         epss_data_url (str): URL to download the (gzipped) EPSS data file,
             possibly with embedded user credentials (`https://user:pwd@server/...`).
         target_file (Path): Path where the EPSS data should be saved.
+        timeout (float): Timeout in seconds for the EPSS data download.
 
     Raises:
         TrivyPluginEPSSError: If the data cannot be downloaded, decompressed,
@@ -172,7 +184,7 @@ def update_epss_data(epss_data_url: str, target_file: Path) -> None:
 
     target_file.parent.mkdir(exist_ok=True, parents=True)
     try:
-        _download_epss_data(epss_data_url, target_file)
+        _download_epss_data(epss_data_url, target_file, timeout)
     except (URLError, TimeoutError, ConnectionError, HTTPException) as ex:
         raise TrivyPluginEPSSError(
             f"Failed to download EPSS data: {ex}"
@@ -301,6 +313,15 @@ def dump_updated_results(
                 ) from None
 
 
+def _timeout_arg(value: str) -> float:
+    timeout = float(value)
+    # Also rejects NaN, for which all comparisons are false
+    if not 0 < timeout < float("inf"):
+        raise ArgumentTypeError(f"invalid timeout: {value}")
+
+    return timeout
+
+
 def _argument_parser() -> ArgumentParser:
     parser = ArgumentParser(
         description="A Trivy plugin that enhances vulnerability scan results "
@@ -321,6 +342,12 @@ def _argument_parser() -> ArgumentParser:
         default=DEFAULT_EPSS_CACHE_DIR,
         help="EPSS data cache directory",
     )
+    parser.add_argument(
+        "--timeout",
+        type=_timeout_arg,
+        default=DEFAULT_EPSS_DOWNLOAD_TIMEOUT,
+        help="EPSS data download timeout, in seconds",
+    )
 
     return parser
 
@@ -340,7 +367,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         epss_data_file = args.cache_dir / EPSS_FILENAME
-        update_epss_data(args.epss_url, epss_data_file)
+        update_epss_data(args.epss_url, epss_data_file, args.timeout)
         dump_updated_results(load_epss_data(epss_data_file), args.output)
     except TrivyPluginEPSSError as ex:
         logging.error(ex)
