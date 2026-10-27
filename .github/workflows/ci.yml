@@ -118,6 +118,19 @@ jobs:
           trivy sbom --format json --output plugin=epss tests/log4shell.cdx.json \
             | jq -e '.Results[].Vulnerabilities[] | select(.VulnerabilityID == "CVE-2021-44228") | .EPSS.score > 0'
 
+  # Skipped matrix jobs never report their per-version checks, so require this
+  # single check instead
+  e2e_tests_result:
+    name: End-to-end tests result
+    needs: e2e_tests
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check end-to-end tests result
+        env:
+          RESULT: ${{ needs.e2e_tests.result }}
+        run: '[[ "$RESULT" == success || "$RESULT" == skipped ]]'
+
   auto_merge:
     name: Auto-merge pre-commit.ci pull request
     if: |
