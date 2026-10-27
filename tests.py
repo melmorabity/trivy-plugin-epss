@@ -25,13 +25,10 @@ from epss import TrivyPluginEPSSError
 if typing.TYPE_CHECKING:
     from unittest.mock import Mock
 
-    from pyfakefs.fake_filesystem import FakeFilesystem
     from pytest_mock.plugin import MockerFixture
 
 
-@pytest.fixture(autouse=True)
-def fake_filesystem(fs: FakeFilesystem) -> FakeFilesystem:
-    return fs
+pytestmark = pytest.mark.usefixtures("fs")
 
 
 @pytest.fixture
