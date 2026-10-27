@@ -12,7 +12,9 @@ import csv
 import errno
 import json
 import logging
+import os
 import re
+import shutil
 import sys
 import time
 import typing
@@ -21,9 +23,11 @@ import urllib.request
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from datetime import datetime
 from gzip import BadGzipFile, GzipFile
+from http.client import HTTPException
 from json import JSONDecodeError
 from logging import Formatter, StreamHandler
 from pathlib import Path
+from tempfile import mkstemp
 from typing import Any, ClassVar
 from urllib.error import URLError
 from urllib.request import Request
@@ -125,6 +129,24 @@ def _build_epss_data_request(epss_data_url: str) -> Request:
     )
 
 
+def _download_epss_data(epss_data_url: str, target_file: Path) -> None:
+    # Write to a temporary file moved into place once complete, so that a
+    # failed or concurrent update never exposes partial EPSS data
+    request = _build_epss_data_request(epss_data_url)
+    fd, temp_name = mkstemp(dir=target_file.parent)
+    temp_path = Path(temp_name)
+    try:
+        with (
+            os.fdopen(fd, "wb") as writer,
+            urllib.request.urlopen(request) as response,  # ruff: ignore[suspicious-url-open-usage]
+            GzipFile(fileobj=response) as gzip_file,
+        ):
+            shutil.copyfileobj(gzip_file, writer)
+        temp_path.replace(target_file)
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+
 def update_epss_data(epss_data_url: str, target_file: Path) -> None:
     """Download and update EPSS data if the cache is missing or outdated.
 
@@ -150,23 +172,18 @@ def update_epss_data(epss_data_url: str, target_file: Path) -> None:
 
     target_file.parent.mkdir(exist_ok=True, parents=True)
     try:
-        request = _build_epss_data_request(epss_data_url)
-        with (
-            urllib.request.urlopen(request) as response,  # ruff: ignore[suspicious-url-open-usage]
-            GzipFile(fileobj=response) as gzip_file,
-            target_file.open("wb") as writer,
-        ):
-            writer.write(gzip_file.read())
-    except URLError as ex:
+        _download_epss_data(epss_data_url, target_file)
+    except (URLError, TimeoutError, ConnectionError, HTTPException) as ex:
         raise TrivyPluginEPSSError(
             f"Failed to download EPSS data: {ex}"
         ) from None
     except BadGzipFile:
-        target_file.unlink(missing_ok=True)
         raise TrivyPluginEPSSError("EPSS data are not gzipped") from None
-    except OSError:
+    except EOFError:
+        raise TrivyPluginEPSSError("EPSS data are truncated") from None
+    except OSError as ex:
         raise TrivyPluginEPSSError(
-            f"Unable to write EPSS data to {target_file}"
+            f"Unable to write EPSS data to {target_file}: {ex}"
         ) from None
 
 
