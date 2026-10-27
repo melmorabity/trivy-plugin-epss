@@ -28,7 +28,6 @@ dev = [
     "ruff",
     "trivy-plugin-epss[test]",
     "ty",
-    "typing_extensions",
 ]
 test = ["pyfakefs", "pytest", "pytest-cov", "pytest-mock", "tox", "tox-uv"]
 
