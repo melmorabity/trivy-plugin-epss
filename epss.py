@@ -43,7 +43,7 @@ if typing.TYPE_CHECKING:  # pragma: nocover
 DEFAULT_EPSS_DATA_URL = (
     "https://epss.empiricalsecurity.com/epss_scores-current.csv.gz"
 )
-DEFAULT_EPSS_CACHE_DIR = Path.home() / ".cache" / "trivy" / "epss"
+DEFAULT_TRIVY_CACHE_DIR = Path.home() / ".cache" / "trivy"
 EPSS_FILENAME = "epss.csv"
 DEFAULT_EPSS_DOWNLOAD_TIMEOUT = 60
 
@@ -336,8 +336,11 @@ def _argument_parser() -> ArgumentParser:
     parser.add_argument(
         "--cache-dir",
         type=Path,
-        default=DEFAULT_EPSS_CACHE_DIR,
-        help="EPSS data cache directory",
+        default=Path(
+            os.environ.get("TRIVY_CACHE_DIR") or DEFAULT_TRIVY_CACHE_DIR
+        )
+        / "epss",
+        help="EPSS data cache directory, in TRIVY_CACHE_DIR if set",
     )
     parser.add_argument(
         "--timeout",

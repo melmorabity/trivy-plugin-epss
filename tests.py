@@ -473,21 +473,34 @@ def test_dump_updated_results_to_file_error(
 
 
 @pytest.mark.parametrize(
-    ("output", "epss_url", "cache_dir", "timeout"),
+    ("output", "epss_url", "cache_dir", "trivy_cache_dir", "timeout"),
     [
-        (None, None, None, None),
-        ("/trivy/scans/result.json", "https://epss", "/trivy/cache", "5"),
+        (None, None, None, None, None),
+        (None, None, None, "/trivy", None),
+        (
+            "/trivy/scans/result.json",
+            "https://epss",
+            "/trivy/cache",
+            "/trivy",
+            "5",
+        ),
     ],
 )
 def test_main_success(
     mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
     epss_data: dict[str, Any],
     trivy_json_result: dict[str, Any],
     output: str,
     epss_url: str,
     cache_dir: str,
+    trivy_cache_dir: str,
     timeout: str,
 ) -> None:
+    if trivy_cache_dir:
+        monkeypatch.setenv("TRIVY_CACHE_DIR", trivy_cache_dir)
+    else:
+        monkeypatch.delenv("TRIVY_CACHE_DIR", raising=False)
     update_epss_data_mock = mocker.patch("epss.update_epss_data")
     load_epss_data_mock = mocker.patch(
         "epss.load_epss_data", return_value=epss_data
@@ -510,7 +523,9 @@ def test_main_success(
 
     assert status == 0
     epss_data_file = (
-        Path(cache_dir) if cache_dir else epss.DEFAULT_EPSS_CACHE_DIR
+        Path(cache_dir)
+        if cache_dir
+        else Path(trivy_cache_dir or epss.DEFAULT_TRIVY_CACHE_DIR) / "epss"
     ) / epss.EPSS_FILENAME
     update_epss_data_mock.assert_called_once_with(
         epss_url or epss.DEFAULT_EPSS_DATA_URL,

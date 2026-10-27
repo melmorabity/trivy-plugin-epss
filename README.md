@@ -62,7 +62,7 @@ options:
   --epss-url EPSS_URL   EPSS data URL (must point to a Gzipped file) (default:
                         https://epss.empiricalsecurity.com/epss_scores-current.csv.gz)
   --cache-dir CACHE_DIR
-                        EPSS data cache directory (default: ~/.cache/trivy/epss)
+                        EPSS data cache directory, in TRIVY_CACHE_DIR if set (default: ~/.cache/trivy/epss)
   --timeout TIMEOUT     EPSS data download timeout, in seconds (default: 60)
 ```
 
